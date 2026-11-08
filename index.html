@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediPulse AI - Interactive Health & Wellness Assistant</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        medical: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a',
+                            navy: '#0f172a',
+                            slate: '#1e293b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js for Vitals Visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Marked.js for Markdown Rendering in Chat -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', 'Noto Sans Ethiopic', sans-serif; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+    <!-- Top Emergency & Medical Disclaimer Banner -->
+    <div id="disclaimer-banner" class="bg-amber-500 text-slate-900 px-4 py-2 text-xs md:text-sm font-medium shadow-md transition-all duration-300">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
+            <div class="flex items-center gap-2 text-center md:text-left">
+                <i data-lucide="alert-triangle" class="w-5 h-5 flex-shrink-0 text-slate-950"></i>
+                <span id="txt-disclaimer-text">
+                    <strong>Medical Disclaimer:</strong> Your AI Doctor is an experimental AI tool for educational and preliminary triage purposes only. It is <strong>NOT</strong> a substitute for professional medical advice, diagnosis, or clinical treatment.
+                </span>
+            </div>
+            <div class="flex items-center gap-3 flex-shrink-0">
+                <a href="tel:911" class="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1 rounded-md text-xs flex items-center gap-1 transition-colors">
+                    <i data-lucide="phone-call" class="w-3.5 h-3.5"></i> <span id="txt-call-emergency">Call Emergency 911 / 907</span>
+                </a>
+                <button onclick="dismissDisclaimer()" class="text-slate-800 hover:text-slate-950 text-xs underline font-semibold" id="txt-acknowledge">
+                    Acknowledge
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-500 to-cyan-400 flex items-center justify-center text-slate-900 shadow-lg shadow-teal-500/20">
+                    <i data-lucide="activity" class="w-6 h-6 stroke-[2.5]"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight flex items-center gap-2">
+                        MediPulse <span class="bg-teal-500/20 text-teal-300 text-xs px-2 py-0.5 rounded border border-teal-500/30">AI Doctor</span>
+                    </h1>
+                    <p class="text-xs text-slate-400" id="txt-app-subtitle">Intelligent Preliminary Health Guidance</p>
+                </div>
+            </div>
+
+            <!-- Desktop Navigation Tabs -->
+            <nav class="hidden md:flex items-center space-x-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+                <button onclick="switchTab('chat')" id="nav-chat" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-white bg-teal-600 shadow-sm">
+                    <i data-lucide="message-square-heart" class="w-4 h-4"></i> <span id="txt-nav-chat">AI Doctor Consult</span>
+                </button>
+                <button onclick="switchTab('symptoms')" id="nav-symptoms" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i data-lucide="stethoscope" class="w-4 h-4"></i> <span id="txt-nav-symptoms">Symptom Checker</span>
+                </button>
+                <button onclick="switchTab('tracker')" id="nav-tracker" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/50">
+                    <i data-lucide="line-chart" class="w-4 h-4"></i> <span id="txt-nav-tracker">Health Tracker</span>
+                </button>
+            </nav>
+
+            <!-- Language Switcher Toggle & Status Indicator -->
+            <div class="flex items-center gap-3">
+                <div class="flex items-center bg-slate-800 p-1 rounded-lg border border-slate-700 text-xs font-semibold">
+                    <button id="lang-btn-en" onclick="setLanguage('en')" class="px-2.5 py-1 rounded-md transition-all bg-teal-600 text-white">English</button>
+                    <button id="lang-btn-am" onclick="setLanguage('am')" class="px-2.5 py-1 rounded-md transition-all text-slate-400 hover:text-white">አማርኛ</button>
+                </div>
+
+                <div class="hidden xl:flex items-center gap-2 text-xs text-slate-300 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="txt-engine-status">AI Engine Active</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Bottom Bar -->
+        <div class="md:hidden flex border-t border-slate-800 bg-slate-900/95 backdrop-blur">
+            <button onclick="switchTab('chat')" id="mob-nav-chat" class="mob-tab-btn flex-1 py-3 text-xs font-medium flex flex-col items-center gap-1 text-teal-400 border-b-2 border-teal-400">
+                <i data-lucide="message-square-heart" class="w-4 h-4"></i> <span id="txt-mob-chat">AI Chat</span>
+            </button>
+            <button onclick="switchTab('symptoms')" id="mob-nav-symptoms" class="mob-tab-btn flex-1 py-3 text-xs font-medium flex flex-col items-center gap-1 text-slate-400">
+                <i data-lucide="stethoscope" class="w-4 h-4"></i> <span id="txt-mob-symptoms">Symptoms</span>
+            </button>
+            <button onclick="switchTab('tracker')" id="mob-nav-tracker" class="mob-tab-btn flex-1 py-3 text-xs font-medium flex flex-col items-center gap-1 text-slate-400">
+                <i data-lucide="line-chart" class="w-4 h-4"></i> <span id="txt-mob-tracker">Metrics</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
+
+        <!-- TAB 1: AI CONSULTATION CHAT -->
+        <section id="tab-chat" class="tab-content flex-1 flex flex-col lg:flex-row gap-6 min-h-[600px]">
+            <!-- Main Chat Area -->
+            <div class="flex-1 glass-panel rounded-2xl shadow-xl border border-slate-200/80 flex flex-col overflow-hidden">
+                <!-- Chat Sub-header -->
+                <div class="bg-slate-900 text-white p-4 flex items-center justify-between border-b border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <div class="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center font-bold text-white shadow-md">
+                                <i data-lucide="bot" class="w-6 h-6"></i>
+                            </div>
+                            <span class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-slate-900 rounded-full"></span>
+                        </div>
+                        <div>
+                            <h2 class="font-semibold text-slate-100 flex items-center gap-2">
+                                <span id="txt-chat-header-title">Your AI Doctor</span>
+                                <span class="bg-teal-900/60 text-teal-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-teal-700/50" id="txt-triage-badge">Triage Mode</span>
+                            </h2>
+                            <p class="text-xs text-slate-400" id="txt-chat-header-subtitle">Ready to listen, analyze symptoms, and offer health info</p>
+                        </div>
+                    </div>
+                    <button onclick="clearChat()" class="text-xs text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> <span id="txt-clear-chat">Clear Chat</span>
+                    </button>
+                </div>
+
+                <!-- Chat Messages Scroll Container -->
+                <div id="chat-messages" class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 custom-scrollbar bg-slate-50/50">
+                    <!-- Initial Welcome Message initialized via JS -->
+                </div>
+
+                <!-- Quick Prompt Suggestions -->
+                <div class="px-4 py-2 bg-slate-100/80 border-t border-slate-200/80 flex items-center gap-2 overflow-x-auto text-xs whitespace-nowrap custom-scrollbar" id="quick-prompts-container">
+                    <!-- Quick prompts loaded dynamically via JS -->
+                </div>
+
+                <!-- Input Box -->
+                <form id="chat-form" onsubmit="handleChatSubmit(event)" class="p-4 bg-white border-t border-slate-200 flex gap-2 items-center">
+                    <textarea 
+                        id="chat-input" 
+                        rows="1" 
+                        placeholder="Describe your symptoms or ask a medical question..." 
+                        class="flex-1 border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 resize-none max-h-32 custom-scrollbar"
+                        onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); handleChatSubmit(event); }"
+                    ></textarea>
+                    <button type="submit" id="send-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-medium p-3 rounded-xl transition-colors shadow-md flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="send" class="w-5 h-5"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Triage & Emergency Sidebar -->
+            <div class="w-full lg:w-80 flex flex-col gap-4">
+                <!-- Red Flag Emergency Alert Box -->
+                <div class="bg-red-50 border border-red-200 rounded-2xl p-4 shadow-sm">
+                    <h3 class="text-sm font-bold text-red-900 flex items-center gap-2 mb-2" id="txt-redflag-title">
+                        <i data-lucide="siren" class="w-4 h-4 text-red-600"></i> Red Flag Emergency Symptoms
+                    </h3>
+                    <p class="text-xs text-red-700 mb-3" id="txt-redflag-desc">If you or someone else experience any of the following, seek immediate emergency medical evaluation:</p>
+                    <ul class="text-xs text-red-800 space-y-1.5 list-disc pl-4 font-medium" id="txt-redflag-list">
+                        <li>Crushing chest pain or pressure</li>
+                        <li>Sudden numbness or paralysis in face/arm/leg</li>
+                        <li>Severe, unmanageable shortness of breath</li>
+                        <li>Fainting, sudden confusion or slurred speech</li>
+                        <li>High fever with neck stiffness</li>
+                    </ul>
+                </div>
+
+                <!-- Guidance Info Card -->
+                <div class="glass-panel p-4 rounded-2xl border border-slate-200 shadow-sm flex-1 space-y-3">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2" id="txt-guide-title">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-teal-600"></i> How to talk to AI Doctor
+                    </h3>
+                    <div class="space-y-2 text-xs text-slate-600" id="txt-guide-steps">
+                        <p class="flex items-start gap-2">
+                            <span class="bg-teal-100 text-teal-800 font-bold rounded px-1.5 py-0.5 text-[10px]">1</span>
+                            Be specific about duration (e.g. "for 3 days").
+                        </p>
+                        <p class="flex items-start gap-2">
+                            <span class="bg-teal-100 text-teal-800 font-bold rounded px-1.5 py-0.5 text-[10px]">2</span>
+                            Mention pain intensity on a 1–10 scale.
+                        </p>
+                        <p class="flex items-start gap-2">
+                            <span class="bg-teal-100 text-teal-800 font-bold rounded px-1.5 py-0.5 text-[10px]">3</span>
+                            List existing medical conditions or medications.
+                        </p>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-200">
+                        <h4 class="text-xs font-bold text-slate-700 mb-2" id="txt-saved-logs-title">Saved Consultation Logs</h4>
+                        <button onclick="exportChatHistory()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-2 px-3 rounded-lg border border-slate-300 font-medium transition-colors flex items-center justify-center gap-2">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> <span id="txt-export-btn">Export Consult Summary</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: SYMPTOM CHECKER QUESTIONNAIRE -->
+        <section id="tab-symptoms" class="tab-content hidden flex-1 flex flex-col gap-6">
+            <div class="glass-panel p-6 rounded-2xl shadow-xl border border-slate-200/80 space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2" id="txt-symptom-title">
+                        <i data-lucide="stethoscope" class="w-6 h-6 text-teal-600"></i> Interactive Symptom Analyzer
+                    </h2>
+                    <p class="text-sm text-slate-600 mt-1" id="txt-symptom-subtitle">Select body regions and symptom severity to generate an instant preliminary analysis and suggested questions for your physician.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Step 1: Body Location Selector -->
+                    <div class="space-y-4">
+                        <label class="block text-sm font-semibold text-slate-800" id="txt-step1-label">1. Primary Affected Region</label>
+                        <div class="grid grid-cols-2 gap-2" id="region-buttons-grid">
+                            <!-- Loaded via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Specific Symptoms Options -->
+                    <div class="space-y-4">
+                        <label class="block text-sm font-semibold text-slate-800" id="txt-step2-label">2. Specific Symptoms</label>
+                        <div id="symptom-tags-container" class="flex flex-wrap gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 min-h-[120px]">
+                            <!-- Loaded via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Intensity & Duration -->
+                    <div class="space-y-4">
+                        <label class="block text-sm font-semibold text-slate-800" id="txt-step3-label">3. Severity & Duration</label>
+                        <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <div>
+                                <div class="flex justify-between text-xs font-medium text-slate-700 mb-1">
+                                    <span id="txt-pain-scale-label">Pain/Discomfort Scale:</span>
+                                    <span id="severity-label" class="font-bold text-teal-700">4 / 10</span>
+                                </div>
+                                <input type="range" id="severity-slider" min="1" max="10" value="4" oninput="updateSeverity(this.value)" class="w-full accent-teal-600">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 mb-1" id="txt-duration-label">How long has this lasted?</label>
+                                <select id="symptom-duration" class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-teal-500">
+                                    <!-- Loaded via JS -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <button onclick="runSymptomAnalysis()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-sm">
+                            <i data-lucide="cpu" class="w-4 h-4"></i> <span id="txt-gen-report-btn">Generate AI Symptom Report</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Analysis Output Card -->
+                <div id="symptom-report-card" class="hidden bg-white rounded-xl p-5 border border-teal-200 shadow-lg space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <h3 class="font-bold text-slate-900 flex items-center gap-2 text-base">
+                            <i data-lucide="file-text" class="w-5 h-5 text-teal-600"></i> <span id="txt-report-card-title">Preliminary Triage Assessment</span>
+                        </h3>
+                        <span id="triage-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                            Mild to Moderate Concern
+                        </span>
+                    </div>
+
+                    <div id="report-content" class="text-sm text-slate-700 space-y-3">
+                        <!-- Dynamic Report Content Loaded Here -->
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100 flex flex-wrap justify-between items-center gap-2">
+                        <p class="text-xs text-slate-500" id="txt-report-footer-note">Take this summary to your healthcare provider for clinical diagnosis.</p>
+                        <button onclick="transferReportToChat()" class="bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-semibold px-4 py-2 rounded-lg border border-teal-200 transition-colors flex items-center gap-1.5">
+                            <i data-lucide="message-square" class="w-3.5 h-3.5"></i> <span id="txt-discuss-ai-btn">Discuss Report with AI Doctor</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: HEALTH METRICS TRACKER -->
+        <section id="tab-tracker" class="tab-content hidden flex-1 flex flex-col gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Water Tracker Widget -->
+                <div class="glass-panel p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <i data-lucide="droplet" class="w-3.5 h-3.5"></i> <span id="txt-metric-hydration">Hydration</span>
+                        </span>
+                        <span class="text-xs text-slate-400" id="txt-water-goal">Goal: 2.5L</span>
+                    </div>
+                    <div class="my-4">
+                        <div class="flex items-baseline gap-1">
+                            <span id="water-val" class="text-3xl font-extrabold text-slate-900">1.2</span>
+                            <span class="text-sm text-slate-500 font-medium">L / 2.5L</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-2 rounded-full mt-2 overflow-hidden">
+                            <div id="water-bar" class="bg-blue-500 h-full transition-all duration-300" style="width: 48%;"></div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="addWater(0.25)" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold py-1.5 rounded-lg border border-blue-200 transition-colors">
+                            +250 ml
+                        </button>
+                        <button onclick="addWater(0.5)" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold py-1.5 rounded-lg border border-blue-200 transition-colors">
+                            +500 ml
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sleep Tracker Widget -->
+                <div class="glass-panel p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <i data-lucide="moon" class="w-3.5 h-3.5"></i> <span id="txt-metric-sleep">Sleep</span>
+                        </span>
+                        <span class="text-xs text-slate-400" id="txt-sleep-target">Target: 8.0h</span>
+                    </div>
+                    <div class="my-4">
+                        <div class="flex items-baseline gap-1">
+                            <span id="sleep-val" class="text-3xl font-extrabold text-slate-900">7.2</span>
+                            <span class="text-sm text-slate-500 font-medium" id="txt-sleep-hrs-unit">hrs</span>
+                        </div>
+                        <p id="sleep-status" class="text-xs text-emerald-600 mt-1 font-medium">Optimal Rest Duration</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="adjustSleep(-0.5)" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold py-1.5 rounded-lg border border-indigo-200">
+                            - 0.5h
+                        </button>
+                        <button onclick="adjustSleep(0.5)" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold py-1.5 rounded-lg border border-indigo-200">
+                            + 0.5h
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Heart Rate Widget -->
+                <div class="glass-panel p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <i data-lucide="heart" class="w-3.5 h-3.5"></i> <span id="txt-metric-pulse">Pulse Rate</span>
+                        </span>
+                        <span class="text-xs text-slate-400" id="txt-resting-label">Resting</span>
+                    </div>
+                    <div class="my-4">
+                        <div class="flex items-baseline gap-1">
+                            <span id="hr-val" class="text-3xl font-extrabold text-slate-900">72</span>
+                            <span class="text-sm text-slate-500 font-medium">BPM</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1" id="txt-hr-normal-range">Normal Range: 60 - 100 BPM</p>
+                    </div>
+                    <button onclick="logPulsePrompt()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold py-1.5 rounded-lg border border-rose-200 transition-colors" id="txt-log-pulse-btn">
+                        Log Heart Measurement
+                    </button>
+                </div>
+
+                <!-- Mood Log Widget -->
+                <div class="glass-panel p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <i data-lucide="smile" class="w-3.5 h-3.5"></i> <span id="txt-metric-mood">Daily Mood</span>
+                        </span>
+                        <span id="mood-label" class="text-xs font-semibold text-amber-700">Good</span>
+                    </div>
+                    <div class="my-3 flex justify-around items-center text-2xl">
+                        <button onclick="setMood('Energetic', '🤩')" class="hover:scale-125 transition-transform p-1">🤩</button>
+                        <button onclick="setMood('Good', '😊')" class="hover:scale-125 transition-transform p-1">😊</button>
+                        <button onclick="setMood('Neutral', '😐')" class="hover:scale-125 transition-transform p-1">😐</button>
+                        <button onclick="setMood('Stressed', '😰')" class="hover:scale-125 transition-transform p-1">😰</button>
+                        <button onclick="setMood('Unwell', '🤒')" class="hover:scale-125 transition-transform p-1">🤒</button>
+                    </div>
+                    <div class="text-center">
+                        <span id="current-emoji" class="text-xs text-slate-500 font-medium">Selected: 😊 Good</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vitals Trend Chart & Log Entry -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 glass-panel p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2" id="txt-chart-title">
+                            <i data-lucide="line-chart" class="w-4 h-4 text-teal-600"></i> Weekly Heart Rate & Activity Log
+                        </h3>
+                        <span class="text-xs text-slate-500" id="txt-past-days">Past 7 Days</span>
+                    </div>
+                    <div class="flex-1 min-h-[260px] relative">
+                        <canvas id="vitalsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Custom Vitals Form -->
+                <div class="glass-panel p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2" id="txt-vital-form-title">
+                        <i data-lucide="plus-circle" class="w-4 h-4 text-teal-600"></i> Manual Vital Log
+                    </h3>
+                    <form onsubmit="handleVitalSubmit(event)" class="space-y-3 text-xs">
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1" id="txt-bp-label">Blood Pressure (mmHg)</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="bp-sys" placeholder="Systolic (120)" class="w-full border border-slate-300 rounded-lg p-2 focus:ring-teal-500">
+                                <span class="self-center font-bold text-slate-400">/</span>
+                                <input type="number" id="bp-dia" placeholder="Diastolic (80)" class="w-full border border-slate-300 rounded-lg p-2 focus:ring-teal-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1" id="txt-glucose-label">Blood Glucose Level (mg/dL)</label>
+                            <input type="number" id="glucose-val" placeholder="e.g. 95" class="w-full border border-slate-300 rounded-lg p-2 focus:ring-teal-500">
+                        </div>
+
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1" id="txt-temp-label">Body Temperature (°F)</label>
+                            <input type="number" step="0.1" id="temp-val" placeholder="e.g. 98.6" class="w-full border border-slate-300 rounded-lg p-2 focus:ring-teal-500">
+                        </div>
+
+                        <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 mt-2">
+                            <i data-lucide="save" class="w-3.5 h-3.5"></i> <span id="txt-save-vital-btn">Save Vital Entry</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 border-t border-slate-800 py-6 text-xs mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <i data-lucide="activity" class="w-4 h-4 text-teal-400"></i>
+                <span id="txt-footer-copy">&copy; 2026 MediPulse AI Doctor & Health Assistant. Powered by Gemini API.</span>
+            </div>
+            <div class="flex gap-4">
+                <a href="#" onclick="alert('Your AI Doctor is designed strictly for educational consultation. Emergency situations require immediate localized EMS access.')" class="hover:underline" id="txt-terms-link">Terms & Disclaimer</a>
+                <a href="#" onclick="alert('No personal health records are transmitted or stored on external servers except temporary queries processed via Google Gemini API.')" class="hover:underline" id="txt-privacy-link">Privacy Notice</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- APP JAVASCRIPT LOGIC WITH AMHARIC LOCALIZATION -->
+    <script>
+        // Global App State Management
+        const state = {
+            lang: localStorage.getItem('medipulse_lang') || 'en',
+            chatHistory: [],
+            waterIntake: parseFloat(localStorage.getItem('medipulse_water') || '1.2'),
+            sleepHours: parseFloat(localStorage.getItem('medipulse_sleep') || '7.2'),
+            heartRate: parseInt(localStorage.getItem('medipulse_hr') || '72'),
+            mood: localStorage.getItem('medipulse_mood') || 'Good',
+            selectedRegion: null,
+            selectedSymptoms: [],
+            severity: 4
+        };
+
+        // System Instruction Prompt for AI Doctor persona (Dual Language adaptive)
+        const MEDICAL_SYSTEM_INSTRUCTION = `
+You are "Your AI Doctor", an empathetic, highly knowledgeable, professional, and thorough AI Medical & Health Assistant.
+
+CRITICAL DUAL LANGUAGE RULE:
+- If the language setting or user input is in Amharic (አማርኛ) or Amharic-English mixed, you MUST reply fluently, clearly, and naturally in AMHARIC (አማርኛ).
+- If the language setting or user input is in English, reply in ENGLISH.
+
+IMPORTANT COMPLIANCE & SAFETY GUIDELINES:
+1. Always maintain a calm, professional, and reassuring medical tone.
+2. Structure your answers clearly using bullet points and brief headings.
+3. Include a short, clear disclaimer in your first statement or at the end that you are an AI assistant and not providing a final clinical diagnosis.
+4. If symptoms sound severe or life-threatening (e.g. chest pain radiating to arm, stroke symptoms, high fever with stiff neck, severe bleeding), explicitly instruct the user to call emergency services (911, 907 or local emergency) IMMEDIATELY.
+5. Suggest relevant questions the user can ask their doctor during an appointment.
+`;
+
+        // Localization Dictionary
+        const i18n = {
+            en: {
+                appSubtitle: "Intelligent Preliminary Health Guidance",
+                navChat: "AI Doctor Consult",
+                navSymptoms: "Symptom Checker",
+                navTracker: "Health Tracker",
+                mobChat: "AI Chat",
+                mobSymptoms: "Symptoms",
+                mobTracker: "Metrics",
+                engineStatus: "AI Engine Active",
+                disclaimerText: "<strong>Medical Disclaimer:</strong> Your AI Doctor is an experimental AI tool for educational and preliminary triage purposes only. It is <strong>NOT</strong> a substitute for professional medical advice, diagnosis, or clinical treatment.",
+                callEmergency: "Call Emergency 911 / 907",
+                acknowledge: "Acknowledge",
+                chatHeaderTitle: "Your AI Doctor",
+                chatHeaderSubtitle: "Ready to listen, analyze symptoms, and offer health info",
+                triageBadge: "Triage Mode",
+                clearChat: "Clear Chat",
+                inputPlaceholder: "Describe your symptoms or ask a medical question...",
+                welcomeMsg: "Hello! I am Your AI Doctor. How can I assist with your health today? Feel free to describe how you're feeling, detail any recent symptoms, or ask general medical questions.",
+                redFlagTitle: "Red Flag Emergency Symptoms",
+                redFlagDesc: "If you or someone else experience any of the following, seek immediate emergency medical evaluation:",
+                redFlagList: [
+                    "Crushing chest pain or severe pressure",
+                    "Sudden numbness or paralysis in face/arm/leg",
+                    "Severe, unmanageable shortness of breath",
+                    "Fainting, sudden confusion or slurred speech",
+                    "High fever with neck stiffness"
+                ],
+                guideTitle: "How to talk to AI Doctor",
+                guideSteps: [
+                    "Be specific about duration (e.g. 'for 3 days').",
+                    "Mention pain intensity on a 1–10 scale.",
+                    "List existing medical conditions or medications."
+                ],
+                savedLogsTitle: "Saved Consultation Logs",
+                exportBtn: "Export Consult Summary",
+                symptomTitle: "Interactive Symptom Analyzer",
+                symptomSubtitle: "Select body regions and symptom severity to generate an instant preliminary analysis and suggested questions for your physician.",
+                step1Label: "1. Primary Affected Region",
+                step2Label: "2. Specific Symptoms",
+                step3Label: "3. Severity & Duration",
+                painScaleLabel: "Pain/Discomfort Scale:",
+                durationLabel: "How long has this lasted?",
+                genReportBtn: "Generate AI Symptom Report",
+                reportCardTitle: "Preliminary Triage Assessment",
+                reportFooterNote: "Take this summary to your healthcare provider for clinical diagnosis.",
+                discussAiBtn: "Discuss Report with AI Doctor",
+                metricHydration: "Hydration",
+                waterGoal: "Goal: 2.5L",
+                metricSleep: "Sleep",
+                sleepTarget: "Target: 8.0h",
+                sleepHrsUnit: "hrs",
+                metricPulse: "Pulse Rate",
+                restingLabel: "Resting",
+                hrNormalRange: "Normal Range: 60 - 100 BPM",
+                logPulseBtn: "Log Heart Measurement",
+                metricMood: "Daily Mood",
+                chartTitle: "Weekly Heart Rate & Activity Log",
+                pastDays: "Past 7 Days",
+                vitalFormTitle: "Manual Vital Log",
+                bpLabel: "Blood Pressure (mmHg)",
+                glucoseLabel: "Blood Glucose Level (mg/dL)",
+                tempLabel: "Body Temperature (°F)",
+                saveVitalBtn: "Save Vital Entry",
+                footerCopy: "© 2026 MediPulse AI Doctor & Health Assistant. Powered by Gemini API.",
+                termsLink: "Terms & Disclaimer",
+                privacyLink: "Privacy Notice",
+                quickPrompts: [
+                    { label: "🤕 Headache & Fatigue", prompt: "I have a mild headache and tiredness since yesterday. What could be the cause?" },
+                    { label: "😴 Sleep Hygiene Tips", prompt: "What are some natural ways to improve sleep quality and reduce stress?" },
+                    { label: "🗣️ Sore Throat Assessment", prompt: "How do I know if my sore throat is viral or bacterial?" },
+                    { label: "❤️ Heart Rate Info", prompt: "Explain normal resting heart rate ranges for adults." }
+                ],
+                durations: [
+                    { val: "Less than 24 hours", text: "Less than 24 hours" },
+                    { val: "1 to 3 days", text: "1 to 3 days" },
+                    { val: "1 week", text: "About 1 week" },
+                    { val: "More than 2 weeks", text: "More than 2 weeks (Chronic)" }
+                ]
+            },
+            am: {
+                appSubtitle: "ብልህ የመጀመሪያ የጤና መመሪያ እና ምክር",
+                navChat: "የእርስዎ AI ዶክተር",
+                navSymptoms: "የምልክቶች መመርመሪያ",
+                navTracker: "የጤና መከታተያ",
+                mobChat: "AI ዶክተር",
+                mobSymptoms: "ምልክቶች",
+                mobTracker: "መከታተያ",
+                engineStatus: "የአይአይ ዶክተር ዝግጁ ነው",
+                disclaimerText: "<strong>የሕክምና ማሳሰቢያ:</strong> የእርስዎ AI ዶክተር ለትምህርታዊ እና የመጀመሪያ ደረጃ መረጃ ብቻ የተዘጋጀ የ AI መሣሪያ ነው። ይህ የባለሙያ ሕክምና፣ የምርመራ ወይም የሕክምና ውሳኔ ምትክ <strong>አይደለም</strong>።",
+                callEmergency: "አደጋ ጊዜ ይደውሉ 911 / 907",
+                acknowledge: "ተረድቻለሁ",
+                chatHeaderTitle: "የእርስዎ AI ዶክተር",
+                chatHeaderSubtitle: "ምልክቶችዎን ለመስማት፣ ለመተንተን እና የጤና መረጃ ለመስጠት ዝግጁ ነው",
+                triageBadge: "የምክር ሁነታ",
+                clearChat: "ውይይት አፅዳ",
+                inputPlaceholder: "የሚሰማዎትን የሕመም ስሜት ወይም የጤና ጥያቄ እዚህ ይጻፉ...",
+                welcomeMsg: "ሰላም! እኔ የእርስዎ AI ዶክተር ነኝ። ዛሬ በጤናዎ ላይ እንዴት ልረዳዎት እችላለሁ? የሚሰማዎትን የሕመም ስሜት፣ ምልክቶች ወይም አጠቃላይ የጤና ጥያቄዎችን በነፃነት ይጠይቁኝ።",
+                redFlagTitle: "አስቸኳይ ትኩረት የሚሹ አደገኛ ምልክቶች",
+                redFlagDesc: "እርስዎ ወይም ሌላ ሰው ከሚከተሉት ምልክቶች አንዱ ከተሰማዎት ወዲያውኑ የአደጋ ጊዜ ሕክምና ያግኙ:",
+                redFlagList: [
+                    "ፅኑ የደረት ሕመም ወይም የደረት ጭነቶች",
+                    "በፊት፣ በእጅ ወይም በእግር ላይ ድንገተኛ የደነዘዘ ስሜት ወይም ሽባነት",
+                    "ከባድ እና ለመቆጣጠር የሚያስቸግር የትንፋሽ እጥረት",
+                    "ራስን መሳት፣ ድንገተኛ የማሰብ መዛባት ወይም የንግግር መደናቀፍ",
+                    "ከፍተኛ ትኩሳት ከአንገት ማደነዝ ጋር"
+                ],
+                guideTitle: "ከ AI ዶክተር ጋር እንዴት እንደሚወያዩ",
+                guideSteps: [
+                    "የሕመሙን ቆይታ በግልጽ ይግለጹ (ለምሳሌ፦ 'ለ 3 ቀናት')።",
+                    "የሕመሙን መጠን ከ 1 እስከ 10 ባለው ደረጃ ይግለጹ።",
+                    "ነባር የጤና ሁኔታዎችን ወይም የሚወስዷቸውን መድኃኒቶች ይጥቀሱ።"
+                ],
+                savedLogsTitle: " የተቀመጡ የምክር ማስታወሻዎች",
+                exportBtn: "የምክር ማጠቃለያ አውርድ (Export)",
+                symptomTitle: "የሕመም ምልክቶች መመርመሪያ",
+                symptomSubtitle: "የሰውነት ክፍል እና የሕመሙን መጠን በመምረጥ ፈጣን የመጀመሪያ ደረጃ ትንተና እና ለዶክተርዎ የሚጠይቋቸውን ጥያቄዎች ያግኙ።",
+                step1Label: "1. የሕመም ስሜት ያለበት የሰውነት ክፍል",
+                step2Label: "2. የተወሰኑ የሕመም ምልክቶች",
+                step3Label: "3. የሕመሙ መጠን እና ቆይታ",
+                painScaleLabel: "የሕመም/የእ অস্বgrid መጠን ደረጃ:",
+                durationLabel: "ይህ ሕመም ምን ያህል ጊዜ ቆየ?",
+                genReportBtn: "የ AI ምልክቶች ሪፖርትፍጠር",
+                reportCardTitle: "የመጀመሪያ ደረጃ የሕክምና ግምገማ",
+                reportFooterNote: "ይህንን ማጠቃለያ ለትክክለኛ ሕክምና ምርመራ ለሐኪምዎ ያሳዩ።",
+                discussAiBtn: "ሪፖርቱን ከ AI ዶክተር ጋር ተወያይ",
+                metricHydration: "የውሃ መጠን",
+                waterGoal: "ግብ፦ 2.5 ሊትር",
+                metricSleep: "የእንቅልፍ ሰዓት",
+                sleepTarget: "ግብ፦ 8.0 ሰዓት",
+                sleepHrsUnit: "ሰዓታት",
+                metricPulse: "የልብ ምት",
+                restingLabel: "በእረፍት ጊዜ",
+                hrNormalRange: "መደበኛ መጠን፦ 60 - 100 BPM",
+                logPulseBtn: "የልብ ምት መዝግብ",
+                metricMood: "የዕለት ስሜት",
+                chartTitle: "የሳምንታዊ የልብ ምት እና የእንቅስቃሴ መዝገብ",
+                pastDays: "ያለፉት 7 ቀናት",
+                vitalFormTitle: "የጤና ምልክቶች በእጅ መዝግብ",
+                bpLabel: "የደም ግፊት (mmHg)",
+                glucoseLabel: "የደም ስኳር መጠን (mg/dL)",
+                tempLabel: "የሰውነት ሙቀት (°F)",
+                saveVitalBtn: "መረጃውን አስቀምጥ",
+                footerCopy: "© 2026 MediPulse AI Doctor & Health Assistant. በ Gemini API የተጎለበተ።",
+                termsLink: "ደንቦች እና ማሳሰቢያ",
+                privacyLink: "የግል መረጃ ጥበቃ",
+                quickPrompts: [
+                    { label: "🤕 የራስ ምታት እና ድካም", prompt: "ከትናንት ጀምሮ ቀላል የራስ ምታት እና የድካም ስሜት ይሰማኛል። ምክንያቱ ምን ሊሆን ይችላል?" },
+                    { label: "😴 የእንቅልፍ ጥራት ምክሮች", prompt: "የእንቅልፍ ጥራትን ለማሻሻል እና ጭንቀትን ለመቀነስ የሚረዱ ተፈጥሯዊ መንገዶች ምንድን ናቸው?" },
+                    { label: "🗣️ የጉሮሮ ህመም ግምገማ", prompt: "የጉሮሮ ህመሜ በቫይረስ ወይም በባክቴሪያ የመጣ መሆኑን እንዴት ማወቅ እችላለሁ?" },
+                    { label: "❤️ የልብ ምት መረጃ", prompt: "ለአዋቂዎች መደበኛ የእረፍት ጊዜ የልብ ምት መጠን ስንት ነው?" }
+                ],
+                durations: [
+                    { val: "Less than 24 hours", text: "ከ 24 ሰዓት ያነሰ" },
+                    { val: "1 to 3 days", text: "ከ 1 እስከ 3 ቀናት" },
+                    { val: "1 week", text: "አንድ ሳምንት ያህል" },
+                    { val: "More than 2 weeks", text: "ከ 2 ሳምንት በላይ (የቆየ)" }
+                ]
+            }
+        };
+
+        // Localized Symptom Database
+        const symptomDatabase = {
+            en: {
+                head: { label: "🧠 Head & Neurological", symptoms: ['Headache / Migraine', 'Dizziness / Vertigo', 'Blurry Vision', 'Nausea', 'Sensitivity to Light', 'Brain Fog'] },
+                chest: { label: "🫁 Chest & Respiration", symptoms: ['Mild Chest Tightness', 'Cough (Dry or Productive)', 'Shortness of Breath', 'Palpitations', 'Wheezing', 'Heartburn / Acid Reflux'] },
+                abdomen: { label: "🫄 Abdomen & Digestive", symptoms: ['Stomach Cramps', 'Bloating', 'Nausea / Vomiting', 'Diarrhea', 'Loss of Appetite', 'Constipation'] },
+                limbs: { label: "🦾 Arms, Legs & Joints", symptoms: ['Joint Stiffness', 'Muscle Soreness', 'Swollen Ankle / Foot', 'Numbness / Tingling', 'Lower Back Pain', 'Tremor'] },
+                skin: { label: "🩹 Skin & Rash", symptoms: ['Itchy Rash', 'Redness / Inflammation', 'Dry / Flaky Skin', 'Hives', 'Unusual Mole / Spot', 'Bruising'] },
+                general: { label: "🌡️ Whole Body / Fever", symptoms: ['Fever / Chills', 'Fatigue / Exhaustion', 'Night Sweats', 'Unexplained Weight Loss', 'Body Aches', 'Insomnia'] }
+            },
+            am: {
+                head: { label: "🧠 ራስ እና ነርቭ", symptoms: ['የራስ ምታት / ማይግሬን', 'ማዞር / የሰውነት መዛባት', 'የዐይን ብዥታ', 'የማቅለሽለሽ ስሜት', 'ለብርሃን ስሜታዊ መሆን', 'የማሰብ መደናገጥ'] },
+                chest: { label: "🫁 ደረት እና የትንፋሽ አካል", symptoms: ['ቀለል ያለ የደረት ወጋ', 'ሳል (ደረቅ ወይም አክታ ያለው)', 'የትንፋሽ ማጠር', 'የልብ በፍጥነት መምታት', 'የትንፋሽ ማሰማት (Wheezing)', 'የቃጠሎ ስሜት / ጨጓራ'] },
+                abdomen: { label: "🫄 ሆድ እና የምግብ መፈጨት", symptoms: ['የሆድ ቁርጠት', 'የሆድ እብጠት', 'ማቅለሽለሽ / ማስታወክ', 'ተቅማጥ', 'የምግብ ፍላጎት መቀነስ', 'ድርቀት (Constipation)'] },
+                limbs: { label: "🦾 እጆች፣ እግሮች እና መገጣጠሚያ", symptoms: ['የመገጣጠሚያ ማደነዝ', 'የጡንቻ ሕመም', 'የእግር እብጠት', 'የመደንዘዝ / የመውጋት ስሜት', 'የወገብ ሕመም', 'የእጅ መንቀጥቀጥ'] },
+                skin: { label: "🩹 ቆዳ እና ሽፍታ", symptoms: ['የሚያስክክ ሽፍታ', 'የቆዳ መቅላት / እብጠት', 'ደረቅ ቆዳ', 'የቆዳ አለርጂ', 'ያልተለመደ የቆዳ ነጠብጣብ', 'የቆዳ ሰማያዊ መሆን (Bruising)'] },
+                general: { label: "🌡️ ሙሉ ሰውነት / ትኩሳት", symptoms: ['ትኩሳት / ብርድ ብርድ ማለት', 'ከፍተኛ ድካም', 'የሌሊት ላብ', 'ያልተጠበቀ የክብደት መቀነስ', 'የሰውነት ቁስለት/ሕመም', 'እንቅልፍ ማጣት'] }
+            }
+        };
+
+        let vitalsChartInstance = null;
+
+        // Initialize Icons, UI Language, & Event Listeners
+        window.addEventListener('DOMContentLoaded', () => {
+            setLanguage(state.lang);
+            initChart();
+            renderMetrics();
+        });
+
+        // Set Language Logic
+        function setLanguage(lang) {
+            state.lang = lang;
+            localStorage.setItem('medipulse_lang', lang);
+
+            // Toggle active styling on language buttons
+            const btnEn = document.getElementById('lang-btn-en');
+            const btnAm = document.getElementById('lang-btn-am');
+            if (lang === 'en') {
+                btnEn.className = "px-2.5 py-1 rounded-md transition-all bg-teal-600 text-white font-bold";
+                btnAm.className = "px-2.5 py-1 rounded-md transition-all text-slate-400 hover:text-white font-semibold";
+            } else {
+                btnAm.className = "px-2.5 py-1 rounded-md transition-all bg-teal-600 text-white font-bold";
+                btnEn.className = "px-2.5 py-1 rounded-md transition-all text-slate-400 hover:text-white font-semibold";
+            }
+
+            const dict = i18n[lang];
+
+            // Update Static Texts
+            document.getElementById('txt-app-subtitle').innerText = dict.appSubtitle;
+            document.getElementById('txt-nav-chat').innerText = dict.navChat;
+            document.getElementById('txt-nav-symptoms').innerText = dict.navSymptoms;
+            document.getElementById('txt-nav-tracker').innerText = dict.navTracker;
+            document.getElementById('txt-mob-chat').innerText = dict.mobChat;
+            document.getElementById('txt-mob-symptoms').innerText = dict.mobSymptoms;
+            document.getElementById('txt-mob-tracker').innerText = dict.mobTracker;
+            document.getElementById('txt-engine-status').innerText = dict.engineStatus;
+            document.getElementById('txt-disclaimer-text').innerHTML = dict.disclaimerText;
+            document.getElementById('txt-call-emergency').innerText = dict.callEmergency;
+            document.getElementById('txt-acknowledge').innerText = dict.acknowledge;
+
+            // Chat UI
+            document.getElementById('txt-chat-header-title').innerText = dict.chatHeaderTitle;
+            document.getElementById('txt-chat-header-subtitle').innerText = dict.chatHeaderSubtitle;
+            document.getElementById('txt-triage-badge').innerText = dict.triageBadge;
+            document.getElementById('txt-clear-chat').innerText = dict.clearChat;
+            document.getElementById('chat-input').placeholder = dict.inputPlaceholder;
+
+            // Sidebar UI
+            document.getElementById('txt-redflag-title').innerHTML = `<i data-lucide="siren" class="w-4 h-4 text-red-600"></i> ${dict.redFlagTitle}`;
+            document.getElementById('txt-redflag-desc').innerText = dict.redFlagDesc;
+            const rfUl = document.getElementById('txt-redflag-list');
+            rfUl.innerHTML = dict.redFlagList.map(item => `<li>${item}</li>`).join('');
+
+            document.getElementById('txt-guide-title').innerHTML = `<i data-lucide="shield-check" class="w-4 h-4 text-teal-600"></i> ${dict.guideTitle}`;
+            const stepsDiv = document.getElementById('txt-guide-steps');
+            stepsDiv.innerHTML = dict.guideSteps.map((step, idx) => `
+                <p class="flex items-start gap-2">
+                    <span class="bg-teal-100 text-teal-800 font-bold rounded px-1.5 py-0.5 text-[10px]">${idx + 1}</span>
+                    ${step}
+                </p>
+            `).join('');
+
+            document.getElementById('txt-saved-logs-title').innerText = dict.savedLogsTitle;
+            document.getElementById('txt-export-btn').innerText = dict.exportBtn;
+
+            // Symptom Checker UI
+            document.getElementById('txt-symptom-title').innerHTML = `<i data-lucide="stethoscope" class="w-6 h-6 text-teal-600"></i> ${dict.symptomTitle}`;
+            document.getElementById('txt-symptom-subtitle').innerText = dict.symptomSubtitle;
+            document.getElementById('txt-step1-label').innerText = dict.step1Label;
+            document.getElementById('txt-step2-label').innerText = dict.step2Label;
+            document.getElementById('txt-step3-label').innerText = dict.step3Label;
+            document.getElementById('txt-pain-scale-label').innerText = dict.painScaleLabel;
+            document.getElementById('txt-duration-label').innerText = dict.durationLabel;
+            document.getElementById('txt-gen-report-btn').innerText = dict.genReportBtn;
+            document.getElementById('txt-report-card-title').innerText = dict.reportCardTitle;
+            document.getElementById('txt-report-footer-note').innerText = dict.reportFooterNote;
+            document.getElementById('txt-discuss-ai-btn').innerText = dict.discussAiBtn;
+
+            // Duration Dropdown
+            const durSelect = document.getElementById('symptom-duration');
+            durSelect.innerHTML = dict.durations.map(d => `<option value="${d.val}">${d.text}</option>`).join('');
+
+            // Quick prompts render
+            renderQuickPrompts();
+            // Symptom Region Buttons render
+            renderRegionButtons();
+
+            // Tracker UI
+            document.getElementById('txt-metric-hydration').innerText = dict.metricHydration;
+            document.getElementById('txt-water-goal').innerText = dict.waterGoal;
+            document.getElementById('txt-metric-sleep').innerText = dict.metricSleep;
+            document.getElementById('txt-sleep-target').innerText = dict.sleepTarget;
+            document.getElementById('txt-sleep-hrs-unit').innerText = dict.sleepHrsUnit;
+            document.getElementById('txt-metric-pulse').innerText = dict.metricPulse;
+            document.getElementById('txt-resting-label').innerText = dict.restingLabel;
+            document.getElementById('txt-hr-normal-range').innerText = dict.hrNormalRange;
+            document.getElementById('txt-log-pulse-btn').innerText = dict.logPulseBtn;
+            document.getElementById('txt-metric-mood').innerText = dict.metricMood;
+            document.getElementById('txt-chart-title').innerHTML = `<i data-lucide="line-chart" class="w-4 h-4 text-teal-600"></i> ${dict.chartTitle}`;
+            document.getElementById('txt-past-days').innerText = dict.pastDays;
+            document.getElementById('txt-vital-form-title').innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4 text-teal-600"></i> ${dict.vitalFormTitle}`;
+            document.getElementById('txt-bp-label').innerText = dict.bpLabel;
+            document.getElementById('txt-glucose-label').innerText = dict.glucoseLabel;
+            document.getElementById('txt-temp-label').innerText = dict.tempLabel;
+            document.getElementById('txt-save-vital-btn').innerText = dict.saveVitalBtn;
+
+            document.getElementById('txt-footer-copy').innerText = dict.footerCopy;
+            document.getElementById('txt-terms-link').innerText = dict.termsLink;
+            document.getElementById('txt-privacy-link').innerText = dict.privacyLink;
+
+            // Reset initial chat welcome if history is empty
+            if (state.chatHistory.length === 0) {
+                clearChat();
+            }
+
+            lucide.createIcons();
+        }
+
+        // Render Quick Prompts
+        function renderQuickPrompts() {
+            const container = document.getElementById('quick-prompts-container');
+            const dict = i18n[state.lang];
+            let html = `<span class="text-slate-500 font-medium flex items-center gap-1"><i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i> ${state.lang === 'am' ? 'ፈጣን ርዕሶች:' : 'Quick Topics:'}</span>`;
+            
+            dict.quickPrompts.forEach(p => {
+                html += `
+                    <button onclick="sendQuickPrompt('${p.prompt.replace(/'/g, "\\'")}')" class="bg-white hover:bg-teal-50 border border-slate-200 text-slate-700 hover:border-teal-300 px-3 py-1 rounded-full transition-all">
+                        ${p.label}
+                    </button>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // Render Region Buttons
+        function renderRegionButtons() {
+            const grid = document.getElementById('region-buttons-grid');
+            const db = symptomDatabase[state.lang];
+            grid.innerHTML = '';
+
+            Object.keys(db).forEach(key => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `region-btn p-3 rounded-xl border border-slate-200 hover:border-teal-500 hover:bg-teal-50 text-left text-xs font-medium transition-all flex items-center gap-2 ${state.selectedRegion === key ? 'border-teal-600 bg-teal-50 text-teal-900 font-bold' : ''}`;
+                btn.innerText = db[key].label;
+                btn.onclick = (e) => selectRegion(key, e.currentTarget);
+                grid.appendChild(btn);
+            });
+
+            // Re-render tags if region active
+            if (state.selectedRegion) {
+                renderSymptomTags(state.selectedRegion);
+            } else {
+                document.getElementById('symptom-tags-container').innerHTML = `<span class="text-xs text-slate-400 italic">${state.lang === 'am' ? 'እባክዎን የሰውነት ክፍል ይምረጡ...' : 'Please choose a region to load common symptoms...'}</span>`;
+            }
+        }
+
+        // Tab Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-teal-600', 'text-white', 'shadow-sm');
+                btn.classList.add('text-slate-300', 'hover:bg-slate-700/50');
+            });
+            const activeDesktop = document.getElementById(`nav-${tabId}`);
+            if (activeDesktop) {
+                activeDesktop.classList.add('bg-teal-600', 'text-white', 'shadow-sm');
+                activeDesktop.classList.remove('text-slate-300');
+            }
+
+            document.querySelectorAll('.mob-tab-btn').forEach(btn => {
+                btn.classList.remove('text-teal-400', 'border-b-2', 'border-teal-400');
+                btn.classList.add('text-slate-400');
+            });
+            const activeMob = document.getElementById(`mob-nav-${tabId}`);
+            if (activeMob) {
+                activeMob.classList.add('text-teal-400', 'border-b-2', 'border-teal-400');
+                activeMob.classList.remove('text-slate-400');
+            }
+        }
+
+        function dismissDisclaimer() {
+            document.getElementById('disclaimer-banner').style.display = 'none';
+        }
+
+        // ==================== GEMINI API INTEGRATION ====================
+        async function fetchGeminiResponse(userPrompt, extraSystemPrompt = "") {
+            const apiKey = ""; // Canvas runtime injection
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const activeLangInstruction = `\nActive Selected UI Language: ${state.lang.toUpperCase()} (${state.lang === 'am' ? 'AMHARIC' : 'ENGLISH'}). You MUST respond in ${state.lang === 'am' ? 'AMHARIC' : 'ENGLISH'}.`;
+            const fullSystemInstruction = MEDICAL_SYSTEM_INSTRUCTION + activeLangInstruction + "\n" + extraSystemPrompt;
+
+            const contents = state.chatHistory.map(msg => ({
+                role: msg.role === 'user' ? 'user' : 'model',
+                parts: [{ text: msg.text }]
+            }));
+
+            if (contents.length === 0 || contents[contents.length - 1].parts[0].text !== userPrompt) {
+                contents.push({
+                    role: 'user',
+                    parts: [{ text: userPrompt }]
+                });
+            }
+
+            const payload = {
+                contents: contents,
+                systemInstruction: {
+                    parts: [{ text: fullSystemInstruction }]
+                }
+            };
+
+            let response = null;
+            let delay = 1000;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (response.ok) break;
+                } catch (e) { }
+                await new Promise(res => setTimeout(res, delay));
+                delay *= 2;
+            }
+
+            if (!response || !response.ok) {
+                throw new Error(state.lang === 'am' ? "ከ AI ዶክተር ሞተር ጋር መገናኘት አልተቻለም። እባክዎ የበይነመረብ ግንኙነትዎን ያረጋግጡ።" : "Unable to connect to Gemini AI Engine. Please check your connection.");
+            }
+
+            const result = await response.json();
+            const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!textResponse) {
+                throw new Error(state.lang === 'am' ? "ከ AI ዶክተር ባዶ ምላሽ ተቀብሏል።" : "Received empty response from AI engine.");
+            }
+
+            return textResponse;
+        }
+
+        // ==================== CHAT BOT LOGIC ====================
+        async function handleChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            input.value = '';
+            appendMessage('user', message);
+            state.chatHistory.push({ role: 'user', text: message });
+
+            const loadingId = appendLoadingIndicator();
+
+            try {
+                const aiReply = await fetchGeminiResponse(message);
+                removeLoadingIndicator(loadingId);
+                appendMessage('model', aiReply);
+                state.chatHistory.push({ role: 'model', text: aiReply });
+            } catch (err) {
+                removeLoadingIndicator(loadingId);
+                appendMessage('model', `⚠️ **Error:** ${err.message || 'Failed to process request.'}`);
+            }
+        }
+
+        function sendQuickPrompt(promptText) {
+            document.getElementById('chat-input').value = promptText;
+            switchTab('chat');
+            handleChatSubmit(new Event('submit'));
+        }
+
+        function appendMessage(role, text) {
+            const container = document.getElementById('chat-messages');
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex items-start gap-3 ${role === 'user' ? 'justify-end' : 'max-w-3xl'}`;
+
+            if (role === 'user') {
+                wrapper.innerHTML = `
+                    <div class="bg-teal-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm text-sm max-w-lg">
+                        <p class="whitespace-pre-wrap">${escapeHtml(text)}</p>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center flex-shrink-0 mt-1 shadow text-xs font-bold">
+                        ${state.lang === 'am' ? 'እርስዎ' : 'YOU'}
+                    </div>
+                `;
+            } else {
+                const parsedMarkdown = marked.parse(text);
+                wrapper.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center flex-shrink-0 mt-1 shadow">
+                        <i data-lucide="bot" class="w-4 h-4"></i>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm text-slate-800 text-sm space-y-2 prose prose-teal max-w-none">
+                        ${parsedMarkdown}
+                    </div>
+                `;
+            }
+
+            container.appendChild(wrapper);
+            lucide.createIcons();
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function appendLoadingIndicator() {
+            const container = document.getElementById('chat-messages');
+            const id = 'loading-' + Date.now();
+            const wrapper = document.createElement('div');
+            wrapper.id = id;
+            wrapper.className = 'flex items-start gap-3 max-w-3xl';
+            const loadingTxt = state.lang === 'am' ? 'የእርስዎ AI ዶክተር መረጃዎችን በመተንተን ላይ ነው...' : 'Your AI Doctor is evaluating health parameters...';
+            wrapper.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center flex-shrink-0 mt-1 shadow">
+                    <i data-lucide="bot" class="w-4 h-4"></i>
+                </div>
+                <div class="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm text-slate-500 text-sm flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-teal-500 animate-bounce"></span>
+                    <span class="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style="animation-delay: 0.2s"></span>
+                    <span class="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style="animation-delay: 0.4s"></span>
+                    <span class="text-xs font-medium text-slate-400 ml-2">${loadingTxt}</span>
+                </div>
+            `;
+            container.appendChild(wrapper);
+            lucide.createIcons();
+            container.scrollTop = container.scrollHeight;
+            return id;
+        }
+
+        function removeLoadingIndicator(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        function clearChat() {
+            state.chatHistory = [];
+            const container = document.getElementById('chat-messages');
+            const welcomeText = i18n[state.lang].welcomeMsg;
+            container.innerHTML = `
+                <div class="flex items-start gap-3 max-w-3xl">
+                    <div class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center flex-shrink-0 mt-1 shadow">
+                        <i data-lucide="bot" class="w-4 h-4"></i>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-200 shadow-sm text-slate-800 text-sm space-y-2">
+                        <p class="font-semibold text-teal-800">${welcomeText}</p>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        function exportChatHistory() {
+            if (state.chatHistory.length === 0) {
+                alert(state.lang === 'am' ? "የሚወርድ የምክር ታሪክ የለም።" : "No active consultation log to export.");
+                return;
+            }
+            let exportStr = `MEDIPULSE AI CONSULTATION SUMMARY\nLanguage: ${state.lang.toUpperCase()}\nGenerated: ${new Date().toLocaleString()}\n\n`;
+            state.chatHistory.forEach(msg => {
+                exportStr += `[${msg.role.toUpperCase()}]:\n${msg.text}\n\n------------------------\n\n`;
+            });
+
+            const blob = new Blob([exportStr], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `MediPulse_Consult_Summary_${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ==================== SYMPTOM CHECKER LOGIC ====================
+        function selectRegion(regionKey, clickedElement) {
+            state.selectedRegion = regionKey;
+            state.selectedSymptoms = [];
+
+            document.querySelectorAll('.region-btn').forEach(btn => {
+                btn.classList.remove('border-teal-600', 'bg-teal-50', 'text-teal-900', 'font-bold');
+            });
+            if (clickedElement) {
+                clickedElement.classList.add('border-teal-600', 'bg-teal-50', 'text-teal-900', 'font-bold');
+            }
+
+            renderSymptomTags(regionKey);
+        }
+
+        function renderSymptomTags(regionKey) {
+            const container = document.getElementById('symptom-tags-container');
+            container.innerHTML = '';
+            const symptoms = symptomDatabase[state.lang][regionKey]?.symptoms || [];
+
+            symptoms.forEach(sym => {
+                const tag = document.createElement('button');
+                tag.type = 'button';
+                tag.className = 'symptom-chip bg-white border border-slate-300 hover:border-teal-500 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 transition-all';
+                tag.innerText = sym;
+                tag.onclick = () => toggleSymptomTag(tag, sym);
+                container.appendChild(tag);
+            });
+        }
+
+        function toggleSymptomTag(element, symptomName) {
+            if (state.selectedSymptoms.includes(symptomName)) {
+                state.selectedSymptoms = state.selectedSymptoms.filter(s => s !== symptomName);
+                element.classList.remove('bg-teal-600', 'text-white', 'border-teal-600');
+                element.classList.add('bg-white', 'text-slate-700');
+            } else {
+                state.selectedSymptoms.push(symptomName);
+                element.classList.add('bg-teal-600', 'text-white', 'border-teal-600');
+                element.classList.remove('bg-white', 'text-slate-700');
+            }
+        }
+
+        function updateSeverity(val) {
+            state.severity = val;
+            let label = state.lang === 'am' ? "ቀለል ያለ" : "Mild";
+            if (val > 3 && val <= 6) label = state.lang === 'am' ? "መከከለኛ" : "Moderate";
+            if (val > 6 && val <= 8) label = state.lang === 'am' ? "ከፍተኛ" : "Severe";
+            if (val > 8) label = state.lang === 'am' ? "በጣም ከፍተኛ/አስቸኳይ" : "Critical / Severe";
+            document.getElementById('severity-label').innerText = `${val} / 10 (${label})`;
+        }
+
+        async function runSymptomAnalysis() {
+            if (!state.selectedRegion || state.selectedSymptoms.length === 0) {
+                alert(state.lang === 'am' ? "እባክዎን የሰውነት ክፍል እና ቢያንስ አንድ የሕመም ምልክት ይምረጡ።" : "Please select a body region and at least one specific symptom.");
+                return;
+            }
+
+            const duration = document.getElementById('symptom-duration').value;
+            const card = document.getElementById('symptom-report-card');
+            const reportContent = document.getElementById('report-content');
+
+            card.classList.remove('hidden');
+            const loadingText = state.lang === 'am' ? "የሕመም ምልክቶችን በ AI ዶክተር መረጃ መሠረት በመተንተን ላይ ይገኛል..." : "Analyzing symptoms against medical guidance knowledge base...";
+            reportContent.innerHTML = `
+                <div class="flex items-center gap-2 text-teal-700 py-4 font-medium">
+                    <span class="w-4 h-4 rounded-full border-2 border-teal-600 border-t-transparent animate-spin"></span>
+                    ${loadingText}
+                </div>
+            `;
+
+            const prompt = `
+Generate a structured symptom preliminary analysis report for a user with the following profile:
+- Primary Region: ${state.selectedRegion} (${symptomDatabase[state.lang][state.selectedRegion]?.label})
+- Reported Symptoms: ${state.selectedSymptoms.join(', ')}
+- Discomfort Severity: ${state.severity} out of 10
+- Duration: ${duration}
+- User Language: ${state.lang.toUpperCase()}
+
+Please construct the analysis in ${state.lang === 'am' ? 'AMHARIC' : 'ENGLISH'}.
+Format the response using HTML tags (e.g. <b>, <ul>, <li>, <p>) containing:
+1. Potential Category Causes (Non-definitive)
+2. Recommended Triage Step
+3. Suggested Questions to ask their doctor
+4. Key Warning signs to watch out for
+`;
+
+            try {
+                const analysisText = await fetchGeminiResponse(prompt, "Return your answer directly formatted in clean HTML paragraphs and bullet lists for display.");
+                reportContent.innerHTML = marked.parse(analysisText);
+
+                const badge = document.getElementById('triage-badge');
+                if (state.severity >= 8) {
+                    badge.innerText = state.lang === 'am' ? "ከፍተኛ ስጋት - አടിയና ሕክምና ይፈልጉ" : "High Severity - Urgent Evaluation Advised";
+                    badge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800";
+                } else if (state.severity >= 5) {
+                    badge.innerText = state.lang === 'am' ? "መከከለኛ - የሐኪም አማካሪ ይመከራል" : "Moderate Concern - Doctor Consultation Recommended";
+                    badge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800";
+                } else {
+                    badge.innerText = state.lang === 'am' ? "ቀለል ያለ - እራስዎን ይከታተሉ" : "Mild Severity - Monitor & Self Care";
+                    badge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800";
+                }
+            } catch (e) {
+                reportContent.innerHTML = `<p class="text-red-600">Failed to generate AI report: ${e.message}</p>`;
+            }
+        }
+
+        function transferReportToChat() {
+            const summary = state.lang === 'am' ? 
+                `የሕመም ምልክት መመርመሪያ ውጤቴ የሚከተለው ነው፦
+- የሰውነት ክፍል፦ ${symptomDatabase[state.lang][state.selectedRegion]?.label}
+- ምልክቶች፦ ${state.selectedSymptoms.join(', ')}
+- የሕመም መጠን፦ ${state.severity}/10
+- ቆይታ፦ ${document.getElementById('symptom-duration').value}
+
+ስለዚህ ሁኔታ ተጨማሪ ምክር እና የሚከተሏቸውን የመፍትሔ እርምጃዎች ሊነግሩኝ ይችላሉ?` : 
+                `I ran the Symptom Checker with the following input:
+- Region: ${symptomDatabase['en'][state.selectedRegion]?.label}
+- Symptoms: ${state.selectedSymptoms.join(', ')}
+- Severity: ${state.severity}/10
+- Duration: ${document.getElementById('symptom-duration').value}
+
+Can you give me deeper advice on what remedies or next steps I should consider?`;
+
+            switchTab('chat');
+            sendQuickPrompt(summary);
+        }
+
+        // ==================== METRICS & TRACKER LOGIC ====================
+        function renderMetrics() {
+            document.getElementById('water-val').innerText = state.waterIntake.toFixed(1);
+            const waterPercent = Math.min(100, (state.waterIntake / 2.5) * 100);
+            document.getElementById('water-bar').style.width = `${waterPercent}%`;
+
+            document.getElementById('sleep-val').innerText = state.sleepHours.toFixed(1);
+            document.getElementById('hr-val').innerText = state.heartRate;
+            document.getElementById('mood-label').innerText = state.mood;
+        }
+
+        function addWater(amount) {
+            state.waterIntake = Math.round((state.waterIntake + amount) * 100) / 100;
+            localStorage.setItem('medipulse_water', state.waterIntake);
+            renderMetrics();
+        }
+
+        function adjustSleep(amount) {
+            state.sleepHours = Math.max(0, Math.round((state.sleepHours + amount) * 10) / 10);
+            localStorage.setItem('medipulse_sleep', state.sleepHours);
+            renderMetrics();
+        }
+
+        function setMood(moodText, emoji) {
+            state.mood = moodText;
+            localStorage.setItem('medipulse_mood', moodText);
+            document.getElementById('current-emoji').innerText = `${state.lang === 'am' ? 'የተመረጠው' : 'Selected'}: ${emoji} ${moodText}`;
+            renderMetrics();
+        }
+
+        function logPulsePrompt() {
+            const promptMsg = state.lang === 'am' ? "እባክዎን የአሁኑን የልብ ምትዎን መጠን (BPM) ያስገቡ፦" : "Enter your current heart rate reading (BPM):";
+            const val = prompt(promptMsg, state.heartRate);
+            if (val && !isNaN(val) && val > 30 && val < 220) {
+                state.heartRate = parseInt(val);
+                localStorage.setItem('medipulse_hr', state.heartRate);
+                renderMetrics();
+            }
+        }
+
+        function handleVitalSubmit(e) {
+            e.preventDefault();
+            const sys = document.getElementById('bp-sys').value;
+            const dia = document.getElementById('bp-dia').value;
+            const temp = document.getElementById('temp-val').value;
+
+            let logMsg = state.lang === 'am' ? "የተመዘገቡ የጤና መረጃዎች፦\n" : "Recorded Vitals:\n";
+            if (sys && dia) logMsg += `- BP: ${sys}/${dia} mmHg\n`;
+            if (temp) logMsg += `- Temp: ${temp} °F\n`;
+
+            alert(logMsg + (state.lang === 'am' ? "በስኬት ተመዝግቧል!" : "Successfully logged into health metrics memory!"));
+            e.target.reset();
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('vitalsChart').getContext('2d');
+            vitalsChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [
+                        {
+                            label: 'Resting Heart Rate (BPM)',
+                            data: [70, 72, 68, 75, 71, 69, state.heartRate],
+                            borderColor: '#f43f5e',
+                            backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Sleep Duration (Hours)',
+                            data: [7.5, 6.8, 8.0, 7.0, 6.5, 8.2, state.sleepHours],
+                            borderColor: '#6366f1',
+                            backgroundColor: 'transparent',
+                            borderDash: [5, 5],
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: { beginAtZero: false }
+                    }
+                }
+            });
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
+</body>
+</html>
