@@ -115,6 +115,20 @@
             const item = list.find(p => p.id === id);
             if (item) {
                 item.status = 'Approved';
+                
+                // Calculate expiration based on plan amount
+                const now = Date.now();
+                let durationDays = 1;
+                if (item.amount == 250) durationDays = 7;
+                else if (item.amount == 800) durationDays = 30;
+
+                item.expiryTimestamp = now + (durationDays * 24 * 60 * 60 * 1000);
+                item.expiryReadable = new Date(item.expiryTimestamp).toLocaleDateString() + ' ' + new Date(item.expiryTimestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                item.notifiedUser = false;
+                
+                // Assign the dedicated paid API key upon approval
+                item.assignedApiKey = "AQ.Ab8RN6LwtIKY3I1KMPxODaX-GAZ7mvKUb0ZwdKpdqxeqcDksiw";
+
                 localStorage.setItem('tena_pending_payments', JSON.stringify(list));
                 renderTransfers();
             }
